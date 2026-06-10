@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cable Calculator</title>
+    <style>
+        body { font-family: Arial; margin: 40px; background: #f4f6f9; }
+        h2 { color: #2c3e50; }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 400px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0 15px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background: #005ea2; }
+        .result {
+            margin-top: 20px;
+            background: #eef3f8;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Cable Calculator</h2>
+
+<div class="card">
+
+    <h3>Conductor Inputs</h3>
+
+    <label>Wire Size (mm):</label>
+    <input id="wireSize" value="2.1">
+
+    <label>No of Wires:</label>
+    <input id="noOfWires" value="7">
+
+    <label>No of Conductors:</label>
+    <input id="conductors" value="3">
+
+    <label>Length (m):</label>
+    <input id="length" value="1">
+
+    <h3>Insulation Inputs</h3>
+
+    <label>OD (mm):</label>
+    <input id="od" value="6.3">
+
+    <label>Core Diameter (mm):</label>
+    <input id="coreDia" value="4.5">
+
+    <label>Multiplier:</label>
+    <input id="multiplier" value="3">
+
+    <button onclick="calculate()">Calculate</button>
+
+    <div class="result">
+        <p id="alu"></p>
+        <p id="ins"></p>
+        <p><b id="total"></b></p>
+    </div>
+
+</div>
+
+<script>
+function calculate() {
+
+    // Inputs
+    let wireSize = parseFloat(document.getElementById('wireSize').value);
+    let noOfWires = parseFloat(document.getElementById('noOfWires').value);
+    let conductors = parseFloat(document.getElementById('conductors').value);
+    let length = parseFloat(document.getElementById('length').value);
+
+    let od = parseFloat(document.getElementById('od').value);
+    let coreDia = parseFloat(document.getElementById('coreDia').value);
+    let multiplier = parseFloat(document.getElementById('multiplier').value);
+
+    // Constants
+    const AL_DENSITY = 2700;   // kg/m³
+    const PVC_DENSITY = 1400;  // kg/m³
+
+    // Convert mm → meters
+    let ws = wireSize / 1000;
+    let od_m = od / 1000;
+    let core_m = coreDia / 1000;
+
+    // ✅ Aluminium weight
+    let aluWeight = (Math.PI / 4) * Math.pow(ws, 2) * noOfWires * conductors * AL_DENSITY * length;
+
+    // ✅ Insulation weight
+    let insWeight = (Math.PI / 4) *
+        (Math.pow(od_m, 2) - Math.pow(core_m, 2)) *
+        multiplier * PVC_DENSITY;
+
+    // Total
+    let total = aluWeight + insWeight;
+
+    // Output
+    document.getElementById("alu").innerText = "Aluminium Weight: " + aluWeight.toFixed(6);
+    document.getElementById("ins").innerText = "Insulation Weight: " + insWeight.toFixed(6);
+    document.getElementById("total").innerText = "Total Weight: " + total.toFixed(6);
+}
+</script>
+
+</body>
+</html>
