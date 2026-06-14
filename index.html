@@ -1,148 +1,201 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Full Cable Calculator</title>
+<title>Cable Calculator</title>
+
 <style>
-body { font-family: Arial; margin: 20px; background:#f4f6f9; }
-table { border-collapse: collapse; margin-bottom:20px; background:white;}
-th, td { padding:8px; border:1px solid #ccc; text-align:center; }
-input { width:80px; }
-button { padding:10px 20px; background:#0078d4; color:white; border:none; }
-h2 { color:#2c3e50; }
+body { font-family: Arial; margin:20px; background:#f4f6f9;}
+.container { display: flex; gap:40px; }
+
+/* tables */
+table { border-collapse: collapse; background:white; }
+td, th { border:1px solid #999; padding:6px; text-align:center; }
+input { width:80px; text-align:center; }
+
+/* colored result table */
+.result td, .result th { background:#eef6ff; }
+.section { background:#d0e3ff !important; font-weight:bold; }
+
+.total { background:#c6efce !important; font-weight:bold; }
+
 </style>
 </head>
+
 <body>
 
-<h2>Sheet2 Cable Calculator</h2>
+<h2>Cable Calculator (Excel Style)</h2>
+<button onclick="calculate()">Calculate</button><br><br>
 
-<!-- ✅ INPUT TABLE -->
-<table id="wireTable">
-<tr>
-<th>Type</th>
-<th>Dia (mm)</th>
-<th>No</th>
-<th>Rate</th>
-</tr>
-<tr><td>Aluminium</td><td><input value="3.15"></td><td><input value="19"></td><td><input value="390"></td></tr>
-<tr><td>Steel</td><td><input value="1.7"></td><td><input value="19"></td><td><input value="70"></td></tr>
-<tr><td>Alloy</td><td><input value="1.7"></td><td><input value="19"></td><td><input value="500"></td></tr>
-</table>
+<div class="container">
 
-<h3>Core Inputs</h3>
-Core Size: <input id="coreSize" value="3.5">
-Angle: <input id="angle" value="120">
-Insulation Thickness: <input id="coreThk" value="1.5">
-
-<h3>Sheath Inputs</h3>
-Inner Sheath Thickness: <input id="innerThk" value="1.5"><br><br>
-Outer Sheath Thickness: <input id="outerThk" value="2.5"><br><br>
-
-<h3>Armour</h3>
-Strip Width: <input id="stripW" value="4.0">
-Strip Thickness: <input id="stripT" value="0.8">
-No of Strips: <input id="stripNo" value="14">
-
-<br><br>
-<button onclick="calculate()">Calculate</button>
-
-<!-- ✅ OUTPUT -->
-<h3>Wire Output</h3>
+<!-- ================= LEFT INPUT ================= -->
 <table>
-<tr><th>Type</th><th>Weight</th><th>Price</th></tr>
-<tbody id="wireOutput"></tbody>
+<tr class="section"><td colspan="2">INPUT</td></tr>
+
+<tr><td>Wire Dia</td><td><input id="d" value="3.15"></td></tr>
+<tr><td>Wire Count</td><td><input id="n" value="19"></td></tr>
+<tr><td>Rate</td><td><input id="rate" value="390"></td></tr>
+
+<tr><td>Core Size</td><td><input id="core" value="3.5"></td></tr>
+<tr><td>Core Thickness</td><td><input id="core_thk" value="1.5"></td></tr>
+
+<tr><td>Inner Thickness</td><td><input id="inner" value="1.5"></td></tr>
+
+<tr><td>Strip No</td><td><input id="strip" value="14"></td></tr>
+
+<tr><td>Outer Thickness</td><td><input id="outer" value="2.5"></td></tr>
+
 </table>
 
-<h3>Layer Output</h3>
-<div id="layers"></div>
 
-<h3 id="final"></h3>
+<!-- ================= RIGHT OUTPUT ================= -->
+<table class="result">
+
+<tr class="section">
+<td>Particular</td>
+<td>Single Core Weight</td>
+<td>Single Core Price</td>
+<td>Multi Core Weight</td>
+<td>Multi Core Price</td>
+</tr>
+
+<tr class="section"><td colspan="5">WIRE</td></tr>
+<tr>
+<td>Wire</td>
+<td id="sw"></td><td id="sp"></td>
+<td id="mw"></td><td id="mp"></td>
+</tr>
+
+<tr class="section"><td colspan="5">CORE INSULATION</td></tr>
+<tr>
+<td>Core</td>
+<td id="scw"></td><td id="scp"></td>
+<td id="mcw"></td><td id="mcp"></td>
+</tr>
+
+<tr class="section"><td colspan="5">INNER SHEATH</td></tr>
+<tr>
+<td>Inner</td>
+<td id="siw"></td><td id="sip"></td>
+<td id="miw"></td><td id="mip"></td>
+</tr>
+
+<tr class="section"><td colspan="5">ARMOUR</td></tr>
+<tr>
+<td>Armour</td>
+<td id="saw"></td><td id="sap"></td>
+<td id="maw"></td><td id="map"></td>
+</tr>
+
+<tr class="section"><td colspan="5">OUTER SHEATH</td></tr>
+<tr>
+<td>Outer</td>
+<td id="sow"></td><td id="sop"></td>
+<td id="mow"></td><td id="mop"></td>
+</tr>
+
+<tr class="total">
+<td>TOTAL</td>
+<td id="stw"></td><td id="stp"></td>
+<td id="mtw"></td><td id="mtp"></td>
+</tr>
+
+</table>
+
+</div>
 
 <script>
+
+function layer(o,i,d,m=1){
+ return (Math.PI/4)*(o*o-i*i)*d*m*1000;
+}
+
 function calculate(){
 
-const density = {
-    Aluminium:2700,
-    Steel:7850,
-    Alloy:2700,
-    PVC:1400,
-    XLPE:940
-};
+const PVC=1400, AL=2700, STEEL=7850;
 
-let rows = document.getElementById("wireTable").rows;
-let wireHTML = "";
+// ===== INPUT =====
+let d_val = d.value/1000;
+let n_val = n.value;
+let rate_val = rate.value;
 
-let totalWeight = 0;
-let totalPrice = 0;
+let core_val = core.value/1000;
+let core_thk_val = core_thk.value/1000;
+let inner_val = inner.value/1000;
+let outer_val = outer.value/1000;
 
-// ✅ 1. Wire calculation
-for(let i=1;i<rows.length;i++){
-    let type = rows[i].cells[0].innerText;
-    let d = parseFloat(rows[i].cells[1].children[0].value)/1000;
-    let no = parseFloat(rows[i].cells[2].children[0].value);
-    let rate = parseFloat(rows[i].cells[3].children[0].value);
+// ===== SINGLE CORE =====
+let sw = (Math.PI/4)*d_val*d_val*n_val*AL*1000;
+let sp = sw*rate_val;
 
-    let weight = (Math.PI/4)*d*d*no*density[type]*1000;
-    let price = weight * rate;
+let coreOD = core_val + 2*core_thk_val;
+let scw = layer(coreOD, core_val, PVC);
+let scp = scw*100;
 
-    totalWeight += weight;
-    totalPrice += price;
+let innerOD = coreOD + 2*inner_val;
+let siw = layer(innerOD, coreOD, PVC);
+let sip = siw*100;
 
-    wireHTML += `<tr>
-        <td>${type}</td>
-        <td>${weight.toFixed(2)}</td>
-        <td>${price.toFixed(2)}</td>
-    </tr>`;
+let saw = (0.8/1000)*(4/1000)*strip.value*STEEL*1000*0.65;
+let sap = saw*80;
+
+let armOD = innerOD + (0.8/1000)*2;
+
+let outerOD = armOD + 2*outer_val;
+let sow = layer(outerOD, armOD, PVC);
+let sop = sow*100;
+
+let stw = sw+scw+siw+saw+sow;
+let stp = sp+scp+sip+sap+sop;
+
+// ===== MULTI CORE =====
+let cores = 3;
+
+let mw = (Math.PI/4)*d_val*d_val*n_val*AL*1000;
+let mp = mw*rate_val;
+
+let packed = coreOD * Math.sqrt(cores);
+
+let mcw = layer(coreOD, core_val, PVC, cores);
+let mcp = mcw*100;
+
+let minnerOD = packed + 2*inner_val;
+let miw = layer(minnerOD, packed, PVC);
+let mip = miw*100;
+
+let maw = (0.8/1000)*(4/1000)*(strip.value*2)*STEEL*1000*0.65;
+let map = maw*80;
+
+let marmOD = minnerOD + (0.8/1000)*2;
+
+let mouterOD = marmOD + 2*outer_val;
+let mow = layer(mouterOD, marmOD, PVC);
+let mop = mow*100;
+
+let mtw = mw+mcw+miw+maw+mow;
+let mtp = mp+mcp+mip+map+mop;
+
+// ===== DISPLAY =====
+sw.innerText=sw.toFixed(2); sp.innerText=sp.toFixed(2);
+mw.innerText=mw.toFixed(2); mp.innerText=mp.toFixed(2);
+
+scw.innerText=scw.toFixed(2); scp.innerText=scp.toFixed(2);
+mcw.innerText=mcw.toFixed(2); mcp.innerText=mcp.toFixed(2);
+
+siw.innerText=siw.toFixed(2); sip.innerText=sip.toFixed(2);
+miw.innerText=miw.toFixed(2); mip.innerText=mip.toFixed(2);
+
+saw.innerText=saw.toFixed(2); sap.innerText=sap.toFixed(2);
+maw.innerText=maw.toFixed(2); map.innerText=map.toFixed(2);
+
+sow.innerText=sow.toFixed(2); sop.innerText=sop.toFixed(2);
+mow.innerText=mow.toFixed(2); mop.innerText=mop.toFixed(2);
+
+stw.innerText=stw.toFixed(2); stp.innerText=stp.toFixed(2);
+mtw.innerText=mtw.toFixed(2); mtp.innerText=mtp.toFixed(2);
+
 }
 
-document.getElementById("wireOutput").innerHTML = wireHTML;
-
-// ✅ 2. Core insulation
-let core = parseFloat(document.getElementById("coreSize").value)/1000;
-let thk = parseFloat(document.getElementById("coreThk").value)/1000;
-
-let coreOD = core + 2*thk;
-
-let coreWeight = (Math.PI/4)*(coreOD*coreOD - core*core)*density.PVC*1000;
-let corePrice = coreWeight * 100;
-
-// ✅ 3. Inner sheath
-let innerThk = parseFloat(document.getElementById("innerThk").value)/1000;
-let innerOD = coreOD + 2*innerThk;
-
-let innerWeight = (Math.PI/4)*(innerOD*innerOD - coreOD*coreOD)*density.PVC*1000;
-let innerPrice = innerWeight * 100;
-
-// ✅ 4. Armour
-let stripW = parseFloat(document.getElementById("stripW").value)/1000;
-let stripT = parseFloat(document.getElementById("stripT").value)/1000;
-let stripNo = parseFloat(document.getElementById("stripNo").value);
-
-let armourWeight = stripW * stripT * stripNo * density.Steel * 1000;
-let armourPrice = armourWeight * 80;
-
-// ✅ 5. Outer sheath
-let outerThk = parseFloat(document.getElementById("outerThk").value)/1000;
-let outerOD = innerOD + 2*outerThk;
-
-let outerWeight = (Math.PI/4)*(outerOD*outerOD - innerOD*innerOD)*density.PVC*1000;
-let outerPrice = outerWeight * 100;
-
-// ✅ Add totals
-totalWeight += coreWeight + innerWeight + armourWeight + outerWeight;
-totalPrice += corePrice + innerPrice + armourPrice + outerPrice;
-
-// ✅ render layer output
-document.getElementById("layers").innerHTML = `
-Core Insulation Weight: ${coreWeight.toFixed(2)} | Price: ${corePrice.toFixed(2)} <br>
-Inner Sheath Weight: ${innerWeight.toFixed(2)} | Price: ${innerPrice.toFixed(2)} <br>
-Armour Weight: ${armourWeight.toFixed(2)} | Price: ${armourPrice.toFixed(2)} <br>
-Outer Sheath Weight: ${outerWeight.toFixed(2)} | Price: ${outerPrice.toFixed(2)}
-`;
-
-document.getElementById("final").innerText =
-"TOTAL WEIGHT = " + totalWeight.toFixed(2) +
-" | TOTAL PRICE = " + totalPrice.toFixed(2);
-}
 </script>
 
 </body>
