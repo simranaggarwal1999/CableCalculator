@@ -1,32 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Excel-like Cable Calculator</title>
+<title>Advanced Cable Calculator (Excel Engine)</title>
 
 <style>
 body { font-family: Arial; margin:20px; background:#f4f6f9;}
 .container { display:flex; gap:40px; }
+
 table { border-collapse: collapse; background:white; }
 td, th { border:1px solid #999; padding:6px; text-align:center;}
-input { width:80px; text-align:center;}
+input { width:90px; text-align:center;}
 
 .section { background:#ddd; font-weight:bold;}
-.result td, .result th { background:#eef6ff; }
-
+.result td { background:#eef6ff; }
 .total { background:#c6efce !important; font-weight:bold; }
 
-/* ✅ highlight like Excel */
 .highlight {
     background-color: #fff3cd !important;
-    transition: background-color 0.8s ease;
+    transition: 0.8s;
 }
 
+/* ✅ Formula tooltip */
+td[data-formula]:hover::after {
+    content: attr(data-formula);
+    position:absolute;
+    background:#333;
+    color:#fff;
+    padding:5px;
+    font-size:12px;
+    border-radius:4px;
+    margin-top:-30px;
+}
 </style>
 </head>
 
 <body>
 
-<h2>Excel-Like Cable Calculator</h2>
+<h2>Excel-like Cable Calculator</h2>
 
 <div class="container">
 
@@ -37,20 +47,22 @@ input { width:80px; text-align:center;}
 <table class="result">
 <tr class="section">
 <td>Particular</td>
-<td>Single</td>
-<td>Multi</td>
+<td>Single Wt</td>
+<td>Single Price</td>
+<td>Multi Wt</td>
+<td>Multi Price</td>
 </tr>
 
-<tr><td>Wire</td><td id="sw"></td><td id="mw"></td></tr>
-<tr><td>Core</td><td id="scw"></td><td id="mcw"></td></tr>
-<tr><td>Inner</td><td id="siw"></td><td id="miw"></td></tr>
-<tr><td>Armour</td><td id="saw"></td><td id="maw"></td></tr>
-<tr><td>Outer</td><td id="sow"></td><td id="mow"></td></tr>
+<tr><td>Wire</td><td id="sw"></td><td id="sp"></td><td id="mw"></td><td id="mp"></td></tr>
+<tr><td>Core</td><td id="scw"></td><td id="scp"></td><td id="mcw"></td><td id="mcp"></td></tr>
+<tr><td>Inner</td><td id="siw"></td><td id="sip"></td><td id="miw"></td><td id="mip"></td></tr>
+<tr><td>Armour</td><td id="saw"></td><td id="sap"></td><td id="maw"></td><td id="map"></td></tr>
+<tr><td>Outer</td><td id="sow"></td><td id="sop"></td><td id="mow"></td><td id="mop"></td></tr>
 
 <tr class="total">
 <td>Total</td>
-<td id="stw"></td>
-<td id="mtw"></td>
+<td id="stw"></td><td id="stp"></td>
+<td id="mtw"></td><td id="mtp"></td>
 </tr>
 </table>
 
@@ -58,22 +70,26 @@ input { width:80px; text-align:center;}
 
 <script>
 
-// ================= INPUT CONFIG =================
+// ================= INPUT =================
 const inputs = [
  {label:"Wire Dia", id:"d", value:3.15},
  {label:"Wire Count", id:"n", value:19},
  {label:"Rate", id:"rate", value:390},
  {label:"Core Size", id:"core", value:3.5},
  {label:"Core Thickness", id:"core_thk", value:1.5},
+ {label:"Core Height", id:"core_height", value:2},
+ {label:"Core Type (1=Round,2=Sector)", id:"core_type", value:1},
+ {label:"Core Angle", id:"angle", value:120},
  {label:"Inner Thickness", id:"inner", value:1.5},
  {label:"Strip No", id:"strip", value:14},
  {label:"Outer Thickness", id:"outer", value:2.5}
 ];
 
-// mapping → Excel cells
 const inputMap = {
- d:"A1", n:"A2", rate:"A3", core:"A4",
- core_thk:"A5", inner:"A6", strip:"A7", outer:"A8"
+ d:"A1", n:"A2", rate:"A3",
+ core:"A4", core_thk:"A5",
+ inner:"A6", strip:"A7", outer:"A8",
+ core_type:"A9", angle:"A10", core_height:"A11"
 };
 
 // ================= CONSTANTS =================
@@ -85,77 +101,69 @@ const constants = {
  SQRT: Math.sqrt
 };
 
-// ================= EXCEL CELLS =================
+// ================= EXCEL MODEL =================
 let excelCells = {
 
- A1:{},A2:{},A3:{},A4:{},A5:{},A6:{},A7:{},A8:{},
+ A1:{},A2:{},A3:{},A4:{},A5:{},A6:{},A7:{},A8:{},A9:{},A10:{},A11:{},
+
+ // ===== CORE GEOMETRY =====
+ B3:{
+ formula:`=IF(A9=1,
+   (A4+2*A5)/1000,
+   ((A4 + A11 + 2*A5) * SQRT(A10/180))/1000)`
+ },
 
  // ===== SINGLE =====
  B1:{formula:"=(PI/4)*(A1/1000)^2*A2*AL*1000"},
- B3:{formula:"=(A4+2*A5)/1000"},
  B4:{formula:"=(PI/4)*(B3^2-(A4/1000)^2)*PVC*1000"},
  B5:{formula:"=B3+2*(A6/1000)"},
  B6:{formula:"=(PI/4)*(B5^2-B3^2)*PVC*1000"},
  B7:{formula:"=(0.8/1000)*(4/1000)*A7*STEEL*1000*0.65"},
  B8:{formula:"=B5+(0.8/1000)*2+2*(A8/1000)"},
  B9:{formula:"=(PI/4)*(B8^2-(B5+(0.8/1000)*2)^2)*PVC*1000"},
+
  B10:{formula:"=SUM(B1,B4,B6,B7,B9)"},
+ B2:{formula:"=B1*A3"},
+ B11:{formula:"=SUM(B2,B4*100,B6*100,B7*80,B9*100)"},
 
  // ===== MULTI =====
  C2:{formula:"=3"},
- C3:{formula:"=B3*SQRT(C2)"},
+ C3:{formula:"=B3*SQRT(C2)*IF(C2=3,1.155,IF(C2=4,1.414,1))"},
+
  C4:{formula:"=(PI/4)*(B3^2-(A4/1000)^2)*PVC*C2*1000"},
  C5:{formula:"=C3+2*(A6/1000)"},
  C6:{formula:"=(PI/4)*(C5^2-C3^2)*PVC*1000"},
  C7:{formula:"=(0.8/1000)*(4/1000)*(A7*2)*STEEL*1000*0.65"},
  C8:{formula:"=C5+(0.8/1000)*2+2*(A8/1000)"},
  C9:{formula:"=(PI/4)*(C8^2-(C5+(0.8/1000)*2)^2)*PVC*1000"},
- C10:{formula:"=SUM(B1,C4,C6,C7,C9)"}
+
+ C10:{formula:"=SUM(B1,C4,C6,C7,C9)"},
+ C11:{formula:"=SUM(B1*A3,C4*100,C6*100,C7*80,C9*100)"}
 };
 
 let computedValues = {};
-let previousValues = {};
+let prevValues = {};
 
-// ================= RENDER INPUT =================
+// ================= INPUT UI =================
 function renderInput(){
- let html = `<tr class="section"><td colspan="2">INPUT</td></tr>`;
+ let html='<tr class="section"><td colspan="2">INPUT</td></tr>';
  inputs.forEach(f=>{
-  html += `<tr><td>${f.label}</td>
-           <td><input id="${f.id}" value="${f.value}" type="number"></td></tr>`;
+  html+=`<tr><td>${f.label}</td>
+  <td><input id="${f.id}" value="${f.value}" type="number"></td></tr>`;
  });
- inputTable.innerHTML = html;
-}
-
-// ================= UTIL =================
-function getVal(id){
- return parseFloat(document.getElementById(id).value)||0;
+ inputTable.innerHTML=html;
 }
 
 // ================= LOAD INPUT =================
 function loadInputs(){
  Object.keys(inputMap).forEach(k=>{
-  excelCells[inputMap[k]] = { value: getVal(k) };
+  excelCells[inputMap[k]]={value:parseFloat(document.getElementById(k).value)||0};
  });
-}
-
-// ================= RANGE =================
-function getRangeCells(range){
- let [start,end]=range.split(":");
- let sc=start.match(/[A-Z]+/)[0], sr=+start.match(/\d+/)[0];
- let ec=end.match(/[A-Z]+/)[0], er=+end.match(/\d+/)[0];
-
- let cells=[];
- for(let r=sr;r<=er;r++){
-  for(let c=sc.charCodeAt(0); c<=ec.charCodeAt(0); c++){
-   cells.push(String.fromCharCode(c)+r);
-  }
- }
- return cells;
 }
 
 // ================= FUNCTIONS =================
 const functions = {
- SUM:(...args)=>args.flat().reduce((a,b)=>a+b,0),
+ SUM:(...a)=>a.flat().reduce((x,y)=>x+y,0),
  IF:(c,t,f)=>c?t:f,
  SQRT:Math.sqrt
 };
@@ -165,89 +173,100 @@ function evalExpr(expr){
 
  expr = expr.replace(/\^/g,"**");
 
- // functions
  let funcMatch = expr.match(/^([A-Z]+)\((.*)\)$/);
  if(funcMatch){
-   let [_,name,args] = funcMatch;
-
-   let parts = args.split(",").map(a=>evalExpr(a));
-
-   return functions[name]?.(...parts)||0;
+  let name=funcMatch[1];
+  let args=funcMatch[2].split(",").map(a=>evalExpr(a));
+  return functions[name](...args);
  }
 
- // range
- if(expr.includes(":")){
-   return getRangeCells(expr).map(c=>computedValues[c]||0);
- }
-
- // cell
- if(/^[A-Z]+\d+$/.test(expr)){
-   return computedValues[expr] || excelCells[expr]?.value || 0;
- }
-
- // replace constants
  Object.keys(constants).forEach(k=>{
-   expr = expr.replaceAll(k, constants[k]);
+  expr = expr.replaceAll(k, constants[k]);
  });
 
- expr = expr.replace(/[A-Z]+\d+/g, c=>{
-   return computedValues[c] || excelCells[c]?.value || 0;
+ expr = expr.replace(/[A-Z]+\d+/g, m=>{
+  return computedValues[m] ?? excelCells[m]?.value ?? 0;
  });
 
- try { return eval(expr); } catch { return 0; }
+ try{return eval(expr)}catch{return 0}
 }
 
 // ================= ENGINE =================
 function calculate(){
 
  loadInputs();
- computedValues = {};
+ computedValues={};
 
  Object.keys(excelCells).forEach(c=>{
   if(!excelCells[c].formula){
-    computedValues[c] = excelCells[c].value || 0;
+    computedValues[c]=excelCells[c].value||0;
   }
  });
 
  Object.keys(excelCells).forEach(c=>{
   if(excelCells[c].formula){
-    let expr = excelCells[c].formula.substring(1);
-    computedValues[c] = evalExpr(expr);
+    let expr=excelCells[c].formula.substring(1);
+    computedValues[c]=evalExpr(expr);
   }
  });
 
- renderOutput();
+ render();
 }
 
-// ================= UI UPDATE =================
-function updateCell(id,val){
+// ================= OUTPUT =================
+function setCell(id,val,cell){
 
  let el=document.getElementById(id);
- let newVal = Number(val).toFixed(2);
+ let v=Number(val).toFixed(2);
 
- if(el.innerText!==newVal){
-   el.classList.add("highlight");
-   setTimeout(()=>el.classList.remove("highlight"),800);
+ if(prevValues[id]!==v){
+  el.classList.add("highlight");
+  setTimeout(()=>el.classList.remove("highlight"),700);
  }
 
- el.innerText=newVal;
+ el.innerText=v;
+ prevValues[id]=v;
+
+ if(cell) el.setAttribute("data-formula",cell+" = "+excelCells[cell].formula);
 }
 
-function renderOutput(){
+function render(){
 
- updateCell("sw",computedValues.B1);
- updateCell("scw",computedValues.B4);
- updateCell("siw",computedValues.B6);
- updateCell("saw",computedValues.B7);
- updateCell("sow",computedValues.B9);
- updateCell("stw",computedValues.B10);
+ setCell("sw",computedValues.B1,"B1");
+ setCell("sp",computedValues.B2,"B2");
 
- updateCell("mw",computedValues.B1);
- updateCell("mcw",computedValues.C4);
- updateCell("miw",computedValues.C6);
- updateCell("maw",computedValues.C7);
- updateCell("mow",computedValues.C9);
- updateCell("mtw",computedValues.C10);
+ setCell("scw",computedValues.B4,"B4");
+ setCell("scp",computedValues.B4*100,"B4");
+
+ setCell("siw",computedValues.B6,"B6");
+ setCell("sip",computedValues.B6*100,"B6");
+
+ setCell("saw",computedValues.B7,"B7");
+ setCell("sap",computedValues.B7*80,"B7");
+
+ setCell("sow",computedValues.B9,"B9");
+ setCell("sop",computedValues.B9*100,"B9");
+
+ setCell("stw",computedValues.B10,"B10");
+ setCell("stp",computedValues.B11,"B11");
+
+ setCell("mw",computedValues.B1,"C1");
+ setCell("mp",computedValues.B1*getVal("rate"),"C1");
+
+ setCell("mcw",computedValues.C4,"C4");
+ setCell("mcp",computedValues.C4*100,"C4");
+
+ setCell("miw",computedValues.C6,"C6");
+ setCell("mip",computedValues.C6*100,"C6");
+
+ setCell("maw",computedValues.C7,"C7");
+ setCell("map",computedValues.C7*80,"C7");
+
+ setCell("mow",computedValues.C9,"C9");
+ setCell("mop",computedValues.C9*100,"C9");
+
+ setCell("mtw",computedValues.C10,"C10");
+ setCell("mtp",computedValues.C11,"C11");
 }
 
 // ================= INIT =================
