@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Advanced Cable Calculator (Excel Engine)</title>
+<title>Cable Calculator (Excel Constant System)</title>
 
 <style>
 body { font-family: Arial; margin:20px; background:#f4f6f9;}
@@ -9,18 +9,14 @@ body { font-family: Arial; margin:20px; background:#f4f6f9;}
 
 table { border-collapse: collapse; background:white; }
 td, th { border:1px solid #999; padding:6px; text-align:center;}
-input { width:90px; text-align:center;}
+input { width:90px; text-align:center; }
 
 .section { background:#ddd; font-weight:bold;}
 .result td { background:#eef6ff; }
-.total { background:#c6efce !important; font-weight:bold; }
+.total { background:#c6efce !important; font-weight:bold;}
 
-.highlight {
-    background-color: #fff3cd !important;
-    transition: 0.8s;
-}
+.highlight { background:#fff3cd !important; }
 
-/* ✅ Formula tooltip */
 td[data-formula]:hover::after {
     content: attr(data-formula);
     position:absolute;
@@ -28,22 +24,33 @@ td[data-formula]:hover::after {
     color:#fff;
     padding:5px;
     font-size:12px;
-    border-radius:4px;
-    margin-top:-30px;
+}
+
+/* constants box */
+.constants {
+    background:#fff;
+    padding:10px;
+    border:1px solid #ccc;
 }
 </style>
 </head>
 
 <body>
 
-<h2>Excel-like Cable Calculator</h2>
+<h2>Excel-Based Cable Calculator</h2>
 
 <div class="container">
 
-<!-- ✅ INPUT -->
+<!-- INPUT -->
 <table id="inputTable"></table>
 
-<!-- ✅ OUTPUT -->
+<!-- CONSTANTS -->
+<div class="constants">
+<h4>Constants (Editable)</h4>
+<table id="constantsTable"></table>
+</div>
+
+<!-- OUTPUT -->
 <table class="result">
 <tr class="section">
 <td>Particular</td>
@@ -79,198 +86,150 @@ const inputs = [
  {label:"Core Thickness", id:"core_thk", value:1.5},
  {label:"Core Height", id:"core_height", value:2},
  {label:"Core Type (1=Round,2=Sector)", id:"core_type", value:1},
- {label:"Core Angle", id:"angle", value:120},
+ {label:"Angle", id:"angle", value:120},
  {label:"Inner Thickness", id:"inner", value:1.5},
  {label:"Strip No", id:"strip", value:14},
  {label:"Outer Thickness", id:"outer", value:2.5}
 ];
 
-const inputMap = {
- d:"A1", n:"A2", rate:"A3",
- core:"A4", core_thk:"A5",
- inner:"A6", strip:"A7", outer:"A8",
- core_type:"A9", angle:"A10", core_height:"A11"
-};
-
 // ================= CONSTANTS =================
-const constants = {
- PI: Math.PI,
- AL: 2700,
- PVC: 1400,
- STEEL: 7850,
- SQRT: Math.sqrt
+let constants = {
+ AL: 2.703,
+ PVC: 1.40,
+ STEEL: 7.85,
+ ARMOUR_RATE: 80,
+ INS_RATE: 100
 };
-
-// ================= EXCEL MODEL =================
-let excelCells = {
-
- A1:{},A2:{},A3:{},A4:{},A5:{},A6:{},A7:{},A8:{},A9:{},A10:{},A11:{},
-
- // ===== CORE GEOMETRY =====
- B3:{
- formula:`=IF(A9=1,
-   (A4+2*A5)/1000,
-   ((A4 + A11 + 2*A5) * SQRT(A10/180))/1000)`
- },
-
- // ===== SINGLE =====
- B1:{formula:"=(PI/4)*(A1/1000)^2*A2*AL*1000"},
- B4:{formula:"=(PI/4)*(B3^2-(A4/1000)^2)*PVC*1000"},
- B5:{formula:"=B3+2*(A6/1000)"},
- B6:{formula:"=(PI/4)*(B5^2-B3^2)*PVC*1000"},
- B7:{formula:"=(0.8/1000)*(4/1000)*A7*STEEL*1000*0.65"},
- B8:{formula:"=B5+(0.8/1000)*2+2*(A8/1000)"},
- B9:{formula:"=(PI/4)*(B8^2-(B5+(0.8/1000)*2)^2)*PVC*1000"},
-
- B10:{formula:"=SUM(B1,B4,B6,B7,B9)"},
- B2:{formula:"=B1*A3"},
- B11:{formula:"=SUM(B2,B4*100,B6*100,B7*80,B9*100)"},
-
- // ===== MULTI =====
- C2:{formula:"=3"},
- C3:{formula:"=B3*SQRT(C2)*IF(C2=3,1.155,IF(C2=4,1.414,1))"},
-
- C4:{formula:"=(PI/4)*(B3^2-(A4/1000)^2)*PVC*C2*1000"},
- C5:{formula:"=C3+2*(A6/1000)"},
- C6:{formula:"=(PI/4)*(C5^2-C3^2)*PVC*1000"},
- C7:{formula:"=(0.8/1000)*(4/1000)*(A7*2)*STEEL*1000*0.65"},
- C8:{formula:"=C5+(0.8/1000)*2+2*(A8/1000)"},
- C9:{formula:"=(PI/4)*(C8^2-(C5+(0.8/1000)*2)^2)*PVC*1000"},
-
- C10:{formula:"=SUM(B1,C4,C6,C7,C9)"},
- C11:{formula:"=SUM(B1*A3,C4*100,C6*100,C7*80,C9*100)"}
-};
-
-let computedValues = {};
-let prevValues = {};
 
 // ================= INPUT UI =================
 function renderInput(){
- let html='<tr class="section"><td colspan="2">INPUT</td></tr>';
+ let html = `<tr class="section"><td colspan="2">INPUT</td></tr>`;
  inputs.forEach(f=>{
-  html+=`<tr><td>${f.label}</td>
+  html += `<tr><td>${f.label}</td>
   <td><input id="${f.id}" value="${f.value}" type="number"></td></tr>`;
  });
- inputTable.innerHTML=html;
+ inputTable.innerHTML = html;
 }
 
-// ================= LOAD INPUT =================
-function loadInputs(){
- Object.keys(inputMap).forEach(k=>{
-  excelCells[inputMap[k]]={value:parseFloat(document.getElementById(k).value)||0};
- });
-}
-
-// ================= FUNCTIONS =================
-const functions = {
- SUM:(...a)=>a.flat().reduce((x,y)=>x+y,0),
- IF:(c,t,f)=>c?t:f,
- SQRT:Math.sqrt
-};
-
-// ================= PARSER =================
-function evalExpr(expr){
-
- expr = expr.replace(/\^/g,"**");
-
- let funcMatch = expr.match(/^([A-Z]+)\((.*)\)$/);
- if(funcMatch){
-  let name=funcMatch[1];
-  let args=funcMatch[2].split(",").map(a=>evalExpr(a));
-  return functions[name](...args);
- }
-
+// ================= CONSTANT UI =================
+function renderConstants(){
+ let html = "";
  Object.keys(constants).forEach(k=>{
-  expr = expr.replaceAll(k, constants[k]);
+  html += `<tr>
+   <td>${k}</td>
+   <td><input value="${constants[k]}" 
+       onchange="updateConstant('${k}',this.value)"></td>
+  </tr>`;
  });
-
- expr = expr.replace(/[A-Z]+\d+/g, m=>{
-  return computedValues[m] ?? excelCells[m]?.value ?? 0;
- });
-
- try{return eval(expr)}catch{return 0}
+ constantsTable.innerHTML = html;
 }
 
-// ================= ENGINE =================
-function calculate(){
-
- loadInputs();
- computedValues={};
-
- Object.keys(excelCells).forEach(c=>{
-  if(!excelCells[c].formula){
-    computedValues[c]=excelCells[c].value||0;
-  }
- });
-
- Object.keys(excelCells).forEach(c=>{
-  if(excelCells[c].formula){
-    let expr=excelCells[c].formula.substring(1);
-    computedValues[c]=evalExpr(expr);
-  }
- });
-
- render();
+function updateConstant(key,val){
+ constants[key] = parseFloat(val) || 0;
+ calculate();
 }
 
-// ================= OUTPUT =================
-function setCell(id,val,cell){
+// ================= CORE ENGINE =================
 
+function calc(){
+
+ let d = +d.value;
+ let n = +n.value;
+ let rate = +rate.value;
+
+ let coreVal = +core.value;
+ let thk = +core_thk.value;
+ let h = +core_height.value;
+ let type = +core_type.value;
+ let angleVal = +angle.value;
+
+ let innerT = +inner.value;
+ let outerT = +outer.value;
+ let stripN = +strip.value;
+
+ // ✅ CORE GEOMETRY
+ let coreOD = type===1
+   ? coreVal + 2*thk
+   : (coreVal + h + 2*thk) * Math.sqrt(angleVal/180);
+
+ // ✅ SINGLE
+ let sw = d*d*0.7857*n*constants.AL;
+ let scw = (coreOD*coreOD - coreVal*coreVal)*0.7857*constants.PVC;
+
+ let innerOD = coreOD + 2*innerT;
+ let siw = (innerOD*innerOD - coreOD*coreOD)*0.7857*constants.PVC;
+
+ let saw = 0.8*4*0.7857*stripN*constants.STEEL;
+
+ let outerOD = innerOD + 2*outerT;
+ let sow = (outerOD*outerOD - innerOD*innerOD)*0.7857*constants.PVC;
+
+ let stw = sw + scw + siw + saw + sow;
+
+ // prices
+ let sp = sw * rate;
+ let scp = scw * constants.INS_RATE;
+ let sip = siw * constants.INS_RATE;
+ let sap = saw * constants.ARMOUR_RATE;
+ let sop = sow * constants.INS_RATE;
+ let stp = sp + scp + sip + sap + sop;
+
+ // ✅ MULTI
+ let cores = 3;
+ let packed = coreOD * Math.sqrt(cores) * 1.155;
+
+ let mcw = (coreOD*coreOD - coreVal*coreVal)*0.7857*constants.PVC*cores;
+
+ let minner = packed + 2*innerT;
+ let miw = (minner*minner - packed*packed)*0.7857*constants.PVC;
+
+ let maw = 0.8*4*(stripN*2)*constants.STEEL*0.7857;
+
+ let mouter = minner + 2*outerT;
+ let mow = (mouter*mouter - minner*minner)*0.7857*constants.PVC;
+
+ let mtw = sw + mcw + miw + maw + mow;
+
+ let mp = sw*rate;
+ let mcp = mcw * constants.INS_RATE;
+ let mip = miw * constants.INS_RATE;
+ let map = maw * constants.ARMOUR_RATE;
+ let mop = mow * constants.INS_RATE;
+
+ let mtp = mp + mcp + mip + map + mop;
+
+ return {sw,sp,scw,scp,siw,sip,saw,sap,sow,sop,stw,stp,
+         mw:sw,mp,mcw,mcp,miw,mip,maw,map,mow,mop,mtw,mtp};
+}
+
+// ================= RENDER =================
+let prev={};
+
+function upd(id,val){
  let el=document.getElementById(id);
- let v=Number(val).toFixed(2);
+ let v=val.toFixed(2);
 
- if(prevValues[id]!==v){
-  el.classList.add("highlight");
-  setTimeout(()=>el.classList.remove("highlight"),700);
+ if(prev[id]!=v){ el.classList.add("highlight");
+  setTimeout(()=>el.classList.remove("highlight"),600);
  }
-
  el.innerText=v;
- prevValues[id]=v;
-
- if(cell) el.setAttribute("data-formula",cell+" = "+excelCells[cell].formula);
+ prev[id]=v;
 }
 
-function render(){
+function calculate(){
+ let r = calc();
 
- setCell("sw",computedValues.B1,"B1");
- setCell("sp",computedValues.B2,"B2");
-
- setCell("scw",computedValues.B4,"B4");
- setCell("scp",computedValues.B4*100,"B4");
-
- setCell("siw",computedValues.B6,"B6");
- setCell("sip",computedValues.B6*100,"B6");
-
- setCell("saw",computedValues.B7,"B7");
- setCell("sap",computedValues.B7*80,"B7");
-
- setCell("sow",computedValues.B9,"B9");
- setCell("sop",computedValues.B9*100,"B9");
-
- setCell("stw",computedValues.B10,"B10");
- setCell("stp",computedValues.B11,"B11");
-
- setCell("mw",computedValues.B1,"C1");
- setCell("mp",computedValues.B1*getVal("rate"),"C1");
-
- setCell("mcw",computedValues.C4,"C4");
- setCell("mcp",computedValues.C4*100,"C4");
-
- setCell("miw",computedValues.C6,"C6");
- setCell("mip",computedValues.C6*100,"C6");
-
- setCell("maw",computedValues.C7,"C7");
- setCell("map",computedValues.C7*80,"C7");
-
- setCell("mow",computedValues.C9,"C9");
- setCell("mop",computedValues.C9*100,"C9");
-
- setCell("mtw",computedValues.C10,"C10");
- setCell("mtp",computedValues.C11,"C11");
+ Object.keys(r).forEach(k=>{
+  if(document.getElementById(k)){
+    upd(k,r[k]);
+  }
+ });
 }
 
 // ================= INIT =================
 renderInput();
+renderConstants();
+
 document.addEventListener("input", calculate);
 
 </script>
