@@ -1,119 +1,147 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cable Calculator</title>
-    <style>
-        body { font-family: Arial; margin: 40px; background: #f4f6f9; }
-        h2 { color: #2c3e50; }
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            width: 400px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        input {
-            width: 100%;
-            padding: 8px;
-            margin: 5px 0 15px;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            background: #0078d4;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover { background: #005ea2; }
-        .result {
-            margin-top: 20px;
-            background: #eef3f8;
-            padding: 10px;
-            border-radius: 5px;
-        }
-    </style>
+<title>Full Cable Calculator</title>
+<style>
+body { font-family: Arial; margin: 20px; background:#f4f6f9; }
+table { border-collapse: collapse; margin-bottom:20px; background:white;}
+th, td { padding:8px; border:1px solid #ccc; text-align:center; }
+input { width:80px; }
+button { padding:10px 20px; background:#0078d4; color:white; border:none; }
+h2 { color:#2c3e50; }
+</style>
 </head>
-
 <body>
 
-<h2>Cable Calculator</h2>
+<h2>Sheet2 Cable Calculator</h2>
 
-<div class="card">
+<!-- ✅ INPUT TABLE -->
+<table id="wireTable">
+<tr>
+<th>Type</th>
+<th>Dia (mm)</th>
+<th>No</th>
+<th>Rate</th>
+</tr>
+<tr><td>Aluminium</td><td><input value="3.15"></td><td><input value="19"></td><td><input value="390"></td></tr>
+<tr><td>Steel</td><td><input value="1.7"></td><td><input value="19"></td><td><input value="70"></td></tr>
+<tr><td>Alloy</td><td><input value="1.7"></td><td><input value="19"></td><td><input value="500"></td></tr>
+</table>
 
-    <h3>Conductor Inputs</h3>
+<h3>Core Inputs</h3>
+Core Size: <input id="coreSize" value="3.5">
+Angle: <input id="angle" value="120">
+Insulation Thickness: <input id="coreThk" value="1.5">
 
-    <label>Wire Size (mm):</label>
-    <input id="wireSize" value="2.1">
+<h3>Sheath Inputs</h3>
+Inner Sheath Thickness: <input id="innerThk" value="1.5"><br><br>
+Outer Sheath Thickness: <input id="outerThk" value="2.5"><br><br>
 
-    <label>No of Wires:</label>
-    <input id="noOfWires" value="7">
+<h3>Armour</h3>
+Strip Width: <input id="stripW" value="4.0">
+Strip Thickness: <input id="stripT" value="0.8">
+No of Strips: <input id="stripNo" value="14">
 
-    <label>No of Conductors:</label>
-    <input id="conductors" value="3">
+<br><br>
+<button onclick="calculate()">Calculate</button>
 
-    <label>Length (m):</label>
-    <input id="length" value="1">
+<!-- ✅ OUTPUT -->
+<h3>Wire Output</h3>
+<table>
+<tr><th>Type</th><th>Weight</th><th>Price</th></tr>
+<tbody id="wireOutput"></tbody>
+</table>
 
-    <h3>Insulation Inputs</h3>
+<h3>Layer Output</h3>
+<div id="layers"></div>
 
-    <label>OD (mm):</label>
-    <input id="od" value="6.3">
-
-    <label>Core Diameter (mm):</label>
-    <input id="coreDia" value="4.5">
-
-    <label>Multiplier:</label>
-    <input id="multiplier" value="3">
-
-    <button onclick="calculate()">Calculate</button>
-
-    <div class="result">
-        <p id="alu"></p>
-        <p id="ins"></p>
-        <p><b id="total"></b></p>
-    </div>
-
-</div>
+<h3 id="final"></h3>
 
 <script>
-function calculate() {
+function calculate(){
 
-    // Inputs
-    let wireSize = parseFloat(document.getElementById('wireSize').value);
-    let noOfWires = parseFloat(document.getElementById('noOfWires').value);
-    let conductors = parseFloat(document.getElementById('conductors').value);
-    let length = parseFloat(document.getElementById('length').value);
+const density = {
+    Aluminium:2700,
+    Steel:7850,
+    Alloy:2700,
+    PVC:1400,
+    XLPE:940
+};
 
-    let od = parseFloat(document.getElementById('od').value);
-    let coreDia = parseFloat(document.getElementById('coreDia').value);
-    let multiplier = parseFloat(document.getElementById('multiplier').value);
+let rows = document.getElementById("wireTable").rows;
+let wireHTML = "";
 
-    // Constants
-    const AL_DENSITY = 2700;   // kg/m³
-    const PVC_DENSITY = 1400;  // kg/m³
+let totalWeight = 0;
+let totalPrice = 0;
 
-    // Convert mm → meters
-    let ws = wireSize / 1000;
-    let od_m = od / 1000;
-    let core_m = coreDia / 1000;
+// ✅ 1. Wire calculation
+for(let i=1;i<rows.length;i++){
+    let type = rows[i].cells[0].innerText;
+    let d = parseFloat(rows[i].cells[1].children[0].value)/1000;
+    let no = parseFloat(rows[i].cells[2].children[0].value);
+    let rate = parseFloat(rows[i].cells[3].children[0].value);
 
-    // ✅ Aluminium weight
-    let aluWeight = (Math.PI / 4) * Math.pow(ws, 2) * noOfWires * conductors * AL_DENSITY * length;
+    let weight = (Math.PI/4)*d*d*no*density[type]*1000;
+    let price = weight * rate;
 
-    // ✅ Insulation weight
-    let insWeight = (Math.PI / 4) *
-        (Math.pow(od_m, 2) - Math.pow(core_m, 2)) *
-        multiplier * PVC_DENSITY;
+    totalWeight += weight;
+    totalPrice += price;
 
-    // Total
-    let total = aluWeight + insWeight;
+    wireHTML += `<tr>
+        <td>${type}</td>
+        <td>${weight.toFixed(2)}</td>
+        <td>${price.toFixed(2)}</td>
+    </tr>`;
+}
 
-    // Output
-    document.getElementById("alu").innerText = "Aluminium Weight: " + aluWeight.toFixed(6);
-    document.getElementById("ins").innerText = "Insulation Weight: " + insWeight.toFixed(6);
-    document.getElementById("total").innerText = "Total Weight: " + total.toFixed(6);
+document.getElementById("wireOutput").innerHTML = wireHTML;
+
+// ✅ 2. Core insulation
+let core = parseFloat(document.getElementById("coreSize").value)/1000;
+let thk = parseFloat(document.getElementById("coreThk").value)/1000;
+
+let coreOD = core + 2*thk;
+
+let coreWeight = (Math.PI/4)*(coreOD*coreOD - core*core)*density.PVC*1000;
+let corePrice = coreWeight * 100;
+
+// ✅ 3. Inner sheath
+let innerThk = parseFloat(document.getElementById("innerThk").value)/1000;
+let innerOD = coreOD + 2*innerThk;
+
+let innerWeight = (Math.PI/4)*(innerOD*innerOD - coreOD*coreOD)*density.PVC*1000;
+let innerPrice = innerWeight * 100;
+
+// ✅ 4. Armour
+let stripW = parseFloat(document.getElementById("stripW").value)/1000;
+let stripT = parseFloat(document.getElementById("stripT").value)/1000;
+let stripNo = parseFloat(document.getElementById("stripNo").value);
+
+let armourWeight = stripW * stripT * stripNo * density.Steel * 1000;
+let armourPrice = armourWeight * 80;
+
+// ✅ 5. Outer sheath
+let outerThk = parseFloat(document.getElementById("outerThk").value)/1000;
+let outerOD = innerOD + 2*outerThk;
+
+let outerWeight = (Math.PI/4)*(outerOD*outerOD - innerOD*innerOD)*density.PVC*1000;
+let outerPrice = outerWeight * 100;
+
+// ✅ Add totals
+totalWeight += coreWeight + innerWeight + armourWeight + outerWeight;
+totalPrice += corePrice + innerPrice + armourPrice + outerPrice;
+
+// ✅ render layer output
+document.getElementById("layers").innerHTML = `
+Core Insulation Weight: ${coreWeight.toFixed(2)} | Price: ${corePrice.toFixed(2)} <br>
+Inner Sheath Weight: ${innerWeight.toFixed(2)} | Price: ${innerPrice.toFixed(2)} <br>
+Armour Weight: ${armourWeight.toFixed(2)} | Price: ${armourPrice.toFixed(2)} <br>
+Outer Sheath Weight: ${outerWeight.toFixed(2)} | Price: ${outerPrice.toFixed(2)}
+`;
+
+document.getElementById("final").innerText =
+"TOTAL WEIGHT = " + totalWeight.toFixed(2) +
+" | TOTAL PRICE = " + totalPrice.toFixed(2);
 }
 </script>
 
