@@ -1,21 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Cable Calculator - Final</title>
+<title>Final Cable Calculator</title>
 
 <style>
 body { font-family: Arial; margin:20px; background:#f4f6f9;}
-.container { display:flex; gap:40px; }
+.container { display:flex; gap:40px; flex-wrap:wrap; }
 
-table { border-collapse: collapse; background:white; }
+table { border-collapse: collapse; background:white; margin-bottom:15px;}
 td, th { border:1px solid #999; padding:6px; text-align:center;}
-input { width:90px; text-align:center;}
+input { width:80px; text-align:center;}
 
 .section { background:#ddd; font-weight:bold;}
 .result td { background:#eef6ff; }
 .total { background:#c6efce !important; font-weight:bold;}
-
-.highlight { background:#fff3cd !important; }
 
 button {
     padding:10px 20px;
@@ -24,136 +22,191 @@ button {
     border:none;
     border-radius:5px;
     cursor:pointer;
-    margin-bottom:15px;
 }
-
-button:hover { background:#005ea2; }
 </style>
 
 </head>
 
 <body>
 
-<h2>Validated Cable Calculator (Excel Exact)</h2>
+<h2>Final Cable Calculator (Sheet2 Matched)</h2>
 
-<!-- ✅ Calculate Button -->
 <button onclick="calculate()">Calculate</button>
 
 <div class="container">
 
-<!-- INPUT -->
-<table id="inputTable"></table>
-
-<!-- CONSTANTS -->
+<!-- ================= WIRE INPUT ================= -->
 <div>
-<h4>Constants</h4>
-<table id="constantsTable"></table>
-</div>
-
-<!-- OUTPUT -->
-<table class="result">
+<h3>Wire Input</h3>
+<table id="wireTable">
 <tr class="section">
-<td>Particular</td>
-<td>Single Wt</td><td>Single Price</td>
-<td>Multi Wt</td><td>Multi Price</td>
+<td>Type</td><td>Dia</td><td>No</td><td>Density</td><td>Rate</td>
 </tr>
 
-<tr><td>Wire</td><td id="sw"></td><td id="sp"></td><td id="mw"></td><td id="mp"></td></tr>
-<tr><td>Core</td><td id="scw"></td><td id="scp"></td><td id="mcw"></td><td id="mcp"></td></tr>
-<tr><td>Inner</td><td id="siw"></td><td id="sip"></td><td id="miw"></td><td id="mip"></td></tr>
-<tr><td>Armour</td><td id="saw"></td><td id="sap"></td><td id="maw"></td><td id="map"></td></tr>
-<tr><td>Outer</td><td id="sow"></td><td id="sop"></td><td id="mow"></td><td id="mop"></td></tr>
+<tr>
+<td>Aluminium</td>
+<td><input value="3.15"></td>
+<td><input value="19"></td>
+<td><input value="2.703"></td>
+<td><input value="390"></td>
+</tr>
+
+<tr>
+<td>Steel</td>
+<td><input value="1.7"></td>
+<td><input value="19"></td>
+<td><input value="7.85"></td>
+<td><input value="70"></td>
+</tr>
+
+<tr>
+<td>Alloy</td>
+<td><input value="1.7"></td>
+<td><input value="19"></td>
+<td><input value="2.7"></td>
+<td><input value="500"></td>
+</tr>
+
+</table>
+</div>
+
+<!-- ================= WIRE OUTPUT ================= -->
+<div>
+<h3>Wire Output</h3>
+<table>
+<tr class="section">
+<td>Type</td><td>Weight</td><td>Price</td>
+</tr>
+<tbody id="wireOutput"></tbody>
 
 <tr class="total">
 <td>Total</td>
-<td id="stw"></td><td id="stp"></td>
-<td id="mtw"></td><td id="mtp"></td>
+<td id="wireTotalW"></td>
+<td id="wireTotalP"></td>
 </tr>
 </table>
+</div>
+
+<!-- ================= INPUT ================= -->
+<div>
+<h3>Other Inputs</h3>
+<table>
+<tr><td>Core Size</td><td><input id="core" value="3.5"></td></tr>
+<tr><td>Core Thickness</td><td><input id="core_thk" value="1.5"></td></tr>
+<tr><td>Core Height</td><td><input id="core_height" value="2"></td></tr>
+<tr><td>Core Type (1/2)</td><td><input id="core_type" value="1"></td></tr>
+<tr><td>Angle</td><td><input id="angle" value="120"></td></tr>
+<tr><td>Inner Thickness</td><td><input id="inner" value="1.5"></td></tr>
+<tr><td>Strip No</td><td><input id="strip" value="14"></td></tr>
+<tr><td>Outer Thickness</td><td><input id="outer" value="2.5"></td></tr>
+</table>
+</div>
+
+<!-- ================= CONSTANTS ================= -->
+<div>
+<h3>Constants</h3>
+<table id="constantsTable"></table>
+</div>
+
+<!-- ================= OUTPUT ================= -->
+<div>
+<h3>Final Output</h3>
+<table class="result">
+<tr class="section">
+<td></td><td>Single</td><td>Multi</td>
+</tr>
+
+<tr><td>Core</td><td id="scw"></td><td id="mcw"></td></tr>
+<tr><td>Inner</td><td id="siw"></td><td id="miw"></td></tr>
+<tr><td>Armour</td><td id="saw"></td><td id="maw"></td></tr>
+<tr><td>Outer</td><td id="sow"></td><td id="mow"></td></tr>
+
+<tr class="total">
+<td>Total Weight</td>
+<td id="stw"></td>
+<td id="mtw"></td>
+</tr>
+</table>
+</div>
 
 </div>
 
 <script>
 
-// ================= INPUT =================
-const inputs = [
- {label:"Wire Dia (mm)", id:"d", value:3.15},
- {label:"Wire Count", id:"n", value:19},
- {label:"Rate", id:"rate", value:390},
-
- {label:"Core Size", id:"core", value:3.5},
- {label:"Core Thickness", id:"core_thk", value:1.5},
- {label:"Core Height", id:"core_height", value:2},
- {label:"Core Type (1=Round,2=Sector)", id:"core_type", value:1},
- {label:"Angle", id:"angle", value:120},
-
- {label:"Inner Thickness", id:"inner", value:1.5},
- {label:"Strip No", id:"strip", value:14},
- {label:"Outer Thickness", id:"outer", value:2.5}
-];
-
 // ================= CONSTANTS =================
 let constants = {
- AL: 2.703,
  PVC: 1.4,
  STEEL: 7.85,
- COVERAGE: 0.65,
- ARMOUR_RATE: 80,
- INS_RATE: 100
+ COVERAGE: 0.65
 };
 
-// ================= UI =================
-function renderInput(){
- let html='<tr class="section"><td colspan="2">INPUT</td></tr>';
- inputs.forEach(f=>{
-  html+=`<tr><td>${f.label}</td><td><input id="${f.id}" value="${f.value}"></td></tr>`;
- });
- inputTable.innerHTML=html;
-}
-
+// render constants
 function renderConstants(){
  let html="";
  Object.keys(constants).forEach(k=>{
-  html+=`<tr>
-    <td>${k}</td>
-    <td><input value="${constants[k]}" 
-         onchange="constants['${k}']=+this.value"></td>
-  </tr>`;
+  html += `<tr><td>${k}</td>
+  <td><input value="${constants[k]}" onchange="constants['${k}']=+this.value"></td></tr>`;
  });
- constantsTable.innerHTML=html;
+ constantsTable.innerHTML = html;
 }
 
-// ================= CALC =================
-function calc(){
+// ================= MAIN CALC =================
+function calculate(){
 
- let dVal=+d.value;
- let nVal=+n.value;
- let rateVal=+rate.value;
+ let sw = 0;
+ let sp = 0;
+ let output = "";
 
- let coreVal=+core.value;
- let thk=+core_thk.value;
- let h=+core_height.value;
- let type=+core_type.value;
- let angleVal=+angle.value;
+ let rows = document.getElementById("wireTable").rows;
 
- let innerT=+inner.value;
- let outerT=+outer.value;
- let stripN=+strip.value;
+ // ✅ WIRE LOOP
+ for(let i=1;i<rows.length;i++){
+
+  let type = rows[i].cells[0].innerText;
+  let d = +rows[i].cells[1].children[0].value;
+  let n = +rows[i].cells[2].children[0].value;
+  let density = +rows[i].cells[3].children[0].value;
+  let rate = +rows[i].cells[4].children[0].value;
+
+  let weight = d*d*0.7857*n*density;
+  let price = weight*rate;
+
+  sw += weight;
+  sp += price;
+
+  output += `<tr>
+   <td>${type}</td>
+   <td>${weight.toFixed(2)}</td>
+   <td>${price.toFixed(2)}</td>
+  </tr>`;
+ }
+
+ document.getElementById("wireOutput").innerHTML = output;
+ document.getElementById("wireTotalW").innerText = sw.toFixed(2);
+ document.getElementById("wireTotalP").innerText = sp.toFixed(2);
+
+ // ================= OTHER INPUTS =================
+ let core = +core.value;
+ let thk = +core_thk.value;
+ let h = +core_height.value;
+ let type = +core_type.value;
+ let angleVal = +angle.value;
+
+ let innerT = +inner.value;
+ let outerT = +outer.value;
+ let stripN = +strip.value;
 
  // ✅ CORE GEOMETRY
  let coreOD = type===1
-  ? coreVal + 2*thk
-  : (coreVal + h + 2*thk)*Math.sqrt(angleVal/180);
+   ? core + 2*thk
+   : (core + h + 2*thk)*Math.sqrt(angleVal/180);
 
  // ✅ SINGLE
- let sw = dVal*dVal*0.7857*nVal*constants.AL;
-
- let scw = (coreOD*coreOD - coreVal*coreVal)*0.7857*constants.PVC;
+ let scw = (coreOD*coreOD - core*core)*0.7857*constants.PVC;
 
  let innerOD = coreOD + 2*innerT;
  let siw = (innerOD*innerOD - coreOD*coreOD)*0.7857*constants.PVC;
 
- // ✅ FIXED ARMOUR (CRITICAL)
  let saw = 4*0.8*stripN*constants.STEEL*constants.COVERAGE;
 
  let outerOD = innerOD + 2*outerT;
@@ -161,24 +214,14 @@ function calc(){
 
  let stw = sw + scw + siw + saw + sow;
 
- // ✅ PRICES
- let sp = sw*rateVal;
- let scp = scw*constants.INS_RATE;
- let sip = siw*constants.INS_RATE;
- let sap = saw*constants.ARMOUR_RATE;
- let sop = sow*constants.INS_RATE;
-
- let stp = sp + scp + sip + sap + sop;
-
  // ✅ MULTI
  let cores = 3;
  let packed = coreOD*Math.sqrt(cores)*1.155;
 
  let mcw = scw*cores;
-
  let minner = packed + 2*innerT;
- let miw = (minner*minner - packed*packed)*0.7857*constants.PVC;
 
+ let miw = (minner*minner - packed*packed)*0.7857*constants.PVC;
  let maw = 4*0.8*(stripN*2)*constants.STEEL*constants.COVERAGE;
 
  let mouter = minner + 2*outerT;
@@ -186,45 +229,34 @@ function calc(){
 
  let mtw = sw + mcw + miw + maw + mow;
 
- let mp = sw*rateVal;
- let mcp = mcw*constants.INS_RATE;
- let mip = miw*constants.INS_RATE;
- let map = maw*constants.ARMOUR_RATE;
- let mop = mow*constants.INS_RATE;
+ // ✅ OUTPUT
+ scwEl.innerText = scw.toFixed(2);
+ siwEl.innerText = siw.toFixed(2);
+ sawEl.innerText = saw.toFixed(2);
+ sowEl.innerText = sow.toFixed(2);
+ stwEl.innerText = stw.toFixed(2);
 
- let mtp = mp + mcp + mip + map + mop;
-
- return {sw,sp,scw,scp,siw,sip,saw,sap,sow,sop,stw,stp,
-         mw:sw,mp,mcw,mcp,miw,mip,maw,map,mow,mop,mtw,mtp};
+ mcwEl.innerText = mcw.toFixed(2);
+ miwEl.innerText = miw.toFixed(2);
+ mawEl.innerText = maw.toFixed(2);
+ mowEl.innerText = mow.toFixed(2);
+ mtwEl.innerText = mtw.toFixed(2);
 }
 
-// ================= RENDER =================
-let prev={};
+// shorthand element refs
+const scwEl = document.getElementById("scw");
+const siwEl = document.getElementById("siw");
+const sawEl = document.getElementById("saw");
+const sowEl = document.getElementById("sow");
+const stwEl = document.getElementById("stw");
 
-function upd(id,val){
- let el=document.getElementById(id);
- let v=val.toFixed(2);
+const mcwEl = document.getElementById("mcw");
+const miwEl = document.getElementById("miw");
+const mawEl = document.getElementById("maw");
+const mowEl = document.getElementById("mow");
+const mtwEl = document.getElementById("mtw");
 
- if(prev[id]!=v){
-  el.classList.add("highlight");
-  setTimeout(()=>el.classList.remove("highlight"),600);
- }
-
- el.innerText=v;
- prev[id]=v;
-}
-
-function calculate(){
- let r=calc();
- Object.keys(r).forEach(k=>{
-  if(document.getElementById(k)){
-    upd(k,r[k]);
-  }
- });
-}
-
-// ================= INIT =================
-renderInput();
+// init
 renderConstants();
 
 </script>
