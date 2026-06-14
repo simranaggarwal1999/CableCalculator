@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Cable Calculator (Config Driven)</title>
+<title>Excel-like Cable Calculator</title>
 
 <style>
 body { font-family: Arial; margin:20px; background:#f4f6f9;}
@@ -9,44 +9,48 @@ body { font-family: Arial; margin:20px; background:#f4f6f9;}
 table { border-collapse: collapse; background:white; }
 td, th { border:1px solid #999; padding:6px; text-align:center;}
 input { width:80px; text-align:center;}
+
 .section { background:#ddd; font-weight:bold;}
 .result td, .result th { background:#eef6ff; }
-.total { background:#c6efce !important; font-weight:bold;}
-</style>
 
+.total { background:#c6efce !important; font-weight:bold; }
+
+/* ✅ highlight like Excel */
+.highlight {
+    background-color: #fff3cd !important;
+    transition: background-color 0.8s ease;
+}
+
+</style>
 </head>
 
 <body>
 
-<h2>Config Driven Cable Calculator</h2>
-
-<button onclick="calculate()">Calculate</button><br><br>
+<h2>Excel-Like Cable Calculator</h2>
 
 <div class="container">
 
-<!-- ✅ INPUT TABLE -->
+<!-- ✅ INPUT -->
 <table id="inputTable"></table>
 
-<!-- ✅ OUTPUT TABLE -->
+<!-- ✅ OUTPUT -->
 <table class="result">
 <tr class="section">
 <td>Particular</td>
-<td>Single Weight</td>
-<td>Single Price</td>
-<td>Multi Weight</td>
-<td>Multi Price</td>
+<td>Single</td>
+<td>Multi</td>
 </tr>
 
-<tr><td>Wire</td><td id="sw"></td><td id="sp"></td><td id="mw"></td><td id="mp"></td></tr>
-<tr><td>Core</td><td id="scw"></td><td id="scp"></td><td id="mcw"></td><td id="mcp"></td></tr>
-<tr><td>Inner</td><td id="siw"></td><td id="sip"></td><td id="miw"></td><td id="mip"></td></tr>
-<tr><td>Armour</td><td id="saw"></td><td id="sap"></td><td id="maw"></td><td id="map"></td></tr>
-<tr><td>Outer</td><td id="sow"></td><td id="sop"></td><td id="mow"></td><td id="mop"></td></tr>
+<tr><td>Wire</td><td id="sw"></td><td id="mw"></td></tr>
+<tr><td>Core</td><td id="scw"></td><td id="mcw"></td></tr>
+<tr><td>Inner</td><td id="siw"></td><td id="miw"></td></tr>
+<tr><td>Armour</td><td id="saw"></td><td id="maw"></td></tr>
+<tr><td>Outer</td><td id="sow"></td><td id="mow"></td></tr>
 
 <tr class="total">
 <td>Total</td>
-<td id="stw"></td><td id="stp"></td>
-<td id="mtw"></td><td id="mtp"></td>
+<td id="stw"></td>
+<td id="mtw"></td>
 </tr>
 </table>
 
@@ -54,137 +58,200 @@ input { width:80px; text-align:center;}
 
 <script>
 
-// ================= CONSTANTS =================
-const constants = {
-    PI: Math.PI,
-    AL: 2700,
-    PVC: 1400,
-    STEEL: 7850
-};
-
 // ================= INPUT CONFIG =================
 const inputs = [
-    { label: "Wire Dia", id: "d", value: 3.15 },
-    { label: "Wire Count", id: "n", value: 19 },
-    { label: "Rate", id: "rate", value: 390 },
-    { label: "Core Size", id: "core", value: 3.5 },
-    { label: "Core Thickness", id: "core_thk", value: 1.5 },
-    { label: "Inner Thickness", id: "inner", value: 1.5 },
-    { label: "Strip No", id: "strip", value: 14 },
-    { label: "Outer Thickness", id: "outer", value: 2.5 }
+ {label:"Wire Dia", id:"d", value:3.15},
+ {label:"Wire Count", id:"n", value:19},
+ {label:"Rate", id:"rate", value:390},
+ {label:"Core Size", id:"core", value:3.5},
+ {label:"Core Thickness", id:"core_thk", value:1.5},
+ {label:"Inner Thickness", id:"inner", value:1.5},
+ {label:"Strip No", id:"strip", value:14},
+ {label:"Outer Thickness", id:"outer", value:2.5}
 ];
 
-// ================= FORMULAS =================
-const formulas = [
+// mapping → Excel cells
+const inputMap = {
+ d:"A1", n:"A2", rate:"A3", core:"A4",
+ core_thk:"A5", inner:"A6", strip:"A7", outer:"A8"
+};
 
-    // SINGLE
-    { id:"sw", formula:"(PI/4)*(d/1000)**2*n*AL*1000"},
-    { id:"sp", formula:"sw*rate"},
+// ================= CONSTANTS =================
+const constants = {
+ PI: Math.PI,
+ AL: 2700,
+ PVC: 1400,
+ STEEL: 7850,
+ SQRT: Math.sqrt
+};
 
-    { id:"coreOD", formula:"(core+2*core_thk)/1000"},
-    { id:"scw", formula:"(PI/4)*(coreOD**2-(core/1000)**2)*PVC*1000"},
-    { id:"scp", formula:"scw*100"},
+// ================= EXCEL CELLS =================
+let excelCells = {
 
-    { id:"innerOD", formula:"coreOD+2*(inner/1000)"},
-    { id:"siw", formula:"(PI/4)*(innerOD**2-coreOD**2)*PVC*1000"},
-    { id:"sip", formula:"siw*100"},
+ A1:{},A2:{},A3:{},A4:{},A5:{},A6:{},A7:{},A8:{},
 
-    { id:"saw", formula:"(0.8/1000)*(4/1000)*strip*STEEL*1000*0.65"},
-    { id:"sap", formula:"saw*80"},
+ // ===== SINGLE =====
+ B1:{formula:"=(PI/4)*(A1/1000)^2*A2*AL*1000"},
+ B3:{formula:"=(A4+2*A5)/1000"},
+ B4:{formula:"=(PI/4)*(B3^2-(A4/1000)^2)*PVC*1000"},
+ B5:{formula:"=B3+2*(A6/1000)"},
+ B6:{formula:"=(PI/4)*(B5^2-B3^2)*PVC*1000"},
+ B7:{formula:"=(0.8/1000)*(4/1000)*A7*STEEL*1000*0.65"},
+ B8:{formula:"=B5+(0.8/1000)*2+2*(A8/1000)"},
+ B9:{formula:"=(PI/4)*(B8^2-(B5+(0.8/1000)*2)^2)*PVC*1000"},
+ B10:{formula:"=SUM(B1,B4,B6,B7,B9)"},
 
-    { id:"outerOD", formula:"innerOD+(0.8/1000)*2+2*(outer/1000)"},
-    { id:"sow", formula:"(PI/4)*(outerOD**2-(innerOD+(0.8/1000)*2)**2)*PVC*1000"},
-    { id:"sop", formula:"sow*100"},
+ // ===== MULTI =====
+ C2:{formula:"=3"},
+ C3:{formula:"=B3*SQRT(C2)"},
+ C4:{formula:"=(PI/4)*(B3^2-(A4/1000)^2)*PVC*C2*1000"},
+ C5:{formula:"=C3+2*(A6/1000)"},
+ C6:{formula:"=(PI/4)*(C5^2-C3^2)*PVC*1000"},
+ C7:{formula:"=(0.8/1000)*(4/1000)*(A7*2)*STEEL*1000*0.65"},
+ C8:{formula:"=C5+(0.8/1000)*2+2*(A8/1000)"},
+ C9:{formula:"=(PI/4)*(C8^2-(C5+(0.8/1000)*2)^2)*PVC*1000"},
+ C10:{formula:"=SUM(B1,C4,C6,C7,C9)"}
+};
 
-    { id:"stw", formula:"sw+scw+siw+saw+sow"},
-    { id:"stp", formula:"sp+scp+sip+sap+sop"},
-
-    // MULTI
-    { id:"cores", formula:"3"},
-    { id:"packed", formula:"coreOD*Math.sqrt(cores)"},
-
-    { id:"mw", formula:"sw"},
-    { id:"mp", formula:"mw*rate"},
-
-    { id:"mcw", formula:"(PI/4)*(coreOD**2-(core/1000)**2)*PVC*cores*1000"},
-    { id:"mcp", formula:"mcw*100"},
-
-    { id:"minnerOD", formula:"packed+2*(inner/1000)"},
-    { id:"miw", formula:"(PI/4)*(minnerOD**2-packed**2)*PVC*1000"},
-    { id:"mip", formula:"miw*100"},
-
-    { id:"maw", formula:"(0.8/1000)*(4/1000)*(strip*2)*STEEL*1000*0.65"},
-    { id:"map", formula:"maw*80"},
-
-    { id:"mouterOD", formula:"minnerOD+(0.8/1000)*2+2*(outer/1000)"},
-    { id:"mow", formula:"(PI/4)*(mouterOD**2-(minnerOD+(0.8/1000)*2)**2)*PVC*1000"},
-    { id:"mop", formula:"mow*100"},
-
-    { id:"mtw", formula:"mw+mcw+miw+maw+mow"},
-    { id:"mtp", formula:"mp+mcp+mip+map+mop"}
-];
+let computedValues = {};
+let previousValues = {};
 
 // ================= RENDER INPUT =================
 function renderInput(){
-    let html = `<tr class="section"><td colspan="2">INPUT</td></tr>`;
-    inputs.forEach(f => {
-        html += `
-        <tr>
-            <td>${f.label}</td>
-            <td><input id="${f.id}" value="${f.value}" type="number" step="any"></td>
-        </tr>`;
-    });
-    inputTable.innerHTML = html;
+ let html = `<tr class="section"><td colspan="2">INPUT</td></tr>`;
+ inputs.forEach(f=>{
+  html += `<tr><td>${f.label}</td>
+           <td><input id="${f.id}" value="${f.value}" type="number"></td></tr>`;
+ });
+ inputTable.innerHTML = html;
+}
+
+// ================= UTIL =================
+function getVal(id){
+ return parseFloat(document.getElementById(id).value)||0;
+}
+
+// ================= LOAD INPUT =================
+function loadInputs(){
+ Object.keys(inputMap).forEach(k=>{
+  excelCells[inputMap[k]] = { value: getVal(k) };
+ });
+}
+
+// ================= RANGE =================
+function getRangeCells(range){
+ let [start,end]=range.split(":");
+ let sc=start.match(/[A-Z]+/)[0], sr=+start.match(/\d+/)[0];
+ let ec=end.match(/[A-Z]+/)[0], er=+end.match(/\d+/)[0];
+
+ let cells=[];
+ for(let r=sr;r<=er;r++){
+  for(let c=sc.charCodeAt(0); c<=ec.charCodeAt(0); c++){
+   cells.push(String.fromCharCode(c)+r);
+  }
+ }
+ return cells;
+}
+
+// ================= FUNCTIONS =================
+const functions = {
+ SUM:(...args)=>args.flat().reduce((a,b)=>a+b,0),
+ IF:(c,t,f)=>c?t:f,
+ SQRT:Math.sqrt
+};
+
+// ================= PARSER =================
+function evalExpr(expr){
+
+ expr = expr.replace(/\^/g,"**");
+
+ // functions
+ let funcMatch = expr.match(/^([A-Z]+)\((.*)\)$/);
+ if(funcMatch){
+   let [_,name,args] = funcMatch;
+
+   let parts = args.split(",").map(a=>evalExpr(a));
+
+   return functions[name]?.(...parts)||0;
+ }
+
+ // range
+ if(expr.includes(":")){
+   return getRangeCells(expr).map(c=>computedValues[c]||0);
+ }
+
+ // cell
+ if(/^[A-Z]+\d+$/.test(expr)){
+   return computedValues[expr] || excelCells[expr]?.value || 0;
+ }
+
+ // replace constants
+ Object.keys(constants).forEach(k=>{
+   expr = expr.replaceAll(k, constants[k]);
+ });
+
+ expr = expr.replace(/[A-Z]+\d+/g, c=>{
+   return computedValues[c] || excelCells[c]?.value || 0;
+ });
+
+ try { return eval(expr); } catch { return 0; }
 }
 
 // ================= ENGINE =================
-function evaluate(){
-
-    let values = {};
-
-    // inputs
-    inputs.forEach(i => {
-        values[i.id] = parseFloat(document.getElementById(i.id).value) || 0;
-    });
-
-    // constants
-    Object.assign(values, constants);
-
-    // formulas
-    formulas.forEach(f => {
-        let expr = f.formula;
-
-        Object.keys(values).forEach(k=>{
-            expr = expr.replaceAll(k, values[k]);
-        });
-
-        try {
-            values[f.id] = eval(expr);
-        } catch {
-            values[f.id] = 0;
-        }
-    });
-
-    return values;
-}
-
-// ================= CALCULATE =================
 function calculate(){
 
-    let v = evaluate();
+ loadInputs();
+ computedValues = {};
 
-    Object.keys(v).forEach(id=>{
-        if(document.getElementById(id)){
-            document.getElementById(id).innerText =
-                (typeof v[id]==="number") ? v[id].toFixed(2) : v[id];
-        }
-    });
+ Object.keys(excelCells).forEach(c=>{
+  if(!excelCells[c].formula){
+    computedValues[c] = excelCells[c].value || 0;
+  }
+ });
+
+ Object.keys(excelCells).forEach(c=>{
+  if(excelCells[c].formula){
+    let expr = excelCells[c].formula.substring(1);
+    computedValues[c] = evalExpr(expr);
+  }
+ });
+
+ renderOutput();
 }
 
-// auto render
-renderInput();
+// ================= UI UPDATE =================
+function updateCell(id,val){
 
-// optional Excel behavior
+ let el=document.getElementById(id);
+ let newVal = Number(val).toFixed(2);
+
+ if(el.innerText!==newVal){
+   el.classList.add("highlight");
+   setTimeout(()=>el.classList.remove("highlight"),800);
+ }
+
+ el.innerText=newVal;
+}
+
+function renderOutput(){
+
+ updateCell("sw",computedValues.B1);
+ updateCell("scw",computedValues.B4);
+ updateCell("siw",computedValues.B6);
+ updateCell("saw",computedValues.B7);
+ updateCell("sow",computedValues.B9);
+ updateCell("stw",computedValues.B10);
+
+ updateCell("mw",computedValues.B1);
+ updateCell("mcw",computedValues.C4);
+ updateCell("miw",computedValues.C6);
+ updateCell("maw",computedValues.C7);
+ updateCell("mow",computedValues.C9);
+ updateCell("mtw",computedValues.C10);
+}
+
+// ================= INIT =================
+renderInput();
 document.addEventListener("input", calculate);
 
 </script>
