@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Cable Calculator (Excel Constant System)</title>
+<title>Cable Calculator - Final</title>
 
 <style>
 body { font-family: Arial; margin:20px; background:#f4f6f9;}
@@ -9,7 +9,7 @@ body { font-family: Arial; margin:20px; background:#f4f6f9;}
 
 table { border-collapse: collapse; background:white; }
 td, th { border:1px solid #999; padding:6px; text-align:center;}
-input { width:90px; text-align:center; }
+input { width:90px; text-align:center;}
 
 .section { background:#ddd; font-weight:bold;}
 .result td { background:#eef6ff; }
@@ -17,27 +17,27 @@ input { width:90px; text-align:center; }
 
 .highlight { background:#fff3cd !important; }
 
-td[data-formula]:hover::after {
-    content: attr(data-formula);
-    position:absolute;
-    background:#333;
-    color:#fff;
-    padding:5px;
-    font-size:12px;
+button {
+    padding:10px 20px;
+    background:#0078d4;
+    color:white;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    margin-bottom:15px;
 }
 
-/* constants box */
-.constants {
-    background:#fff;
-    padding:10px;
-    border:1px solid #ccc;
-}
+button:hover { background:#005ea2; }
 </style>
+
 </head>
 
 <body>
 
-<h2>Excel-Based Cable Calculator</h2>
+<h2>Validated Cable Calculator (Excel Exact)</h2>
+
+<!-- ✅ Calculate Button -->
+<button onclick="calculate()">Calculate</button>
 
 <div class="container">
 
@@ -45,8 +45,8 @@ td[data-formula]:hover::after {
 <table id="inputTable"></table>
 
 <!-- CONSTANTS -->
-<div class="constants">
-<h4>Constants (Editable)</h4>
+<div>
+<h4>Constants</h4>
 <table id="constantsTable"></table>
 </div>
 
@@ -54,10 +54,8 @@ td[data-formula]:hover::after {
 <table class="result">
 <tr class="section">
 <td>Particular</td>
-<td>Single Wt</td>
-<td>Single Price</td>
-<td>Multi Wt</td>
-<td>Multi Price</td>
+<td>Single Wt</td><td>Single Price</td>
+<td>Multi Wt</td><td>Multi Price</td>
 </tr>
 
 <tr><td>Wire</td><td id="sw"></td><td id="sp"></td><td id="mw"></td><td id="mp"></td></tr>
@@ -79,14 +77,16 @@ td[data-formula]:hover::after {
 
 // ================= INPUT =================
 const inputs = [
- {label:"Wire Dia", id:"d", value:3.15},
+ {label:"Wire Dia (mm)", id:"d", value:3.15},
  {label:"Wire Count", id:"n", value:19},
  {label:"Rate", id:"rate", value:390},
+
  {label:"Core Size", id:"core", value:3.5},
  {label:"Core Thickness", id:"core_thk", value:1.5},
  {label:"Core Height", id:"core_height", value:2},
  {label:"Core Type (1=Round,2=Sector)", id:"core_type", value:1},
  {label:"Angle", id:"angle", value:120},
+
  {label:"Inner Thickness", id:"inner", value:1.5},
  {label:"Strip No", id:"strip", value:14},
  {label:"Outer Thickness", id:"outer", value:2.5}
@@ -95,106 +95,102 @@ const inputs = [
 // ================= CONSTANTS =================
 let constants = {
  AL: 2.703,
- PVC: 1.40,
+ PVC: 1.4,
  STEEL: 7.85,
+ COVERAGE: 0.65,
  ARMOUR_RATE: 80,
  INS_RATE: 100
 };
 
-// ================= INPUT UI =================
+// ================= UI =================
 function renderInput(){
- let html = `<tr class="section"><td colspan="2">INPUT</td></tr>`;
+ let html='<tr class="section"><td colspan="2">INPUT</td></tr>';
  inputs.forEach(f=>{
-  html += `<tr><td>${f.label}</td>
-  <td><input id="${f.id}" value="${f.value}" type="number"></td></tr>`;
+  html+=`<tr><td>${f.label}</td><td><input id="${f.id}" value="${f.value}"></td></tr>`;
  });
- inputTable.innerHTML = html;
+ inputTable.innerHTML=html;
 }
 
-// ================= CONSTANT UI =================
 function renderConstants(){
- let html = "";
+ let html="";
  Object.keys(constants).forEach(k=>{
-  html += `<tr>
-   <td>${k}</td>
-   <td><input value="${constants[k]}" 
-       onchange="updateConstant('${k}',this.value)"></td>
+  html+=`<tr>
+    <td>${k}</td>
+    <td><input value="${constants[k]}" 
+         onchange="constants['${k}']=+this.value"></td>
   </tr>`;
  });
- constantsTable.innerHTML = html;
+ constantsTable.innerHTML=html;
 }
 
-function updateConstant(key,val){
- constants[key] = parseFloat(val) || 0;
- calculate();
-}
-
-// ================= CORE ENGINE =================
-
+// ================= CALC =================
 function calc(){
 
- let d = +d.value;
- let n = +n.value;
- let rate = +rate.value;
+ let dVal=+d.value;
+ let nVal=+n.value;
+ let rateVal=+rate.value;
 
- let coreVal = +core.value;
- let thk = +core_thk.value;
- let h = +core_height.value;
- let type = +core_type.value;
- let angleVal = +angle.value;
+ let coreVal=+core.value;
+ let thk=+core_thk.value;
+ let h=+core_height.value;
+ let type=+core_type.value;
+ let angleVal=+angle.value;
 
- let innerT = +inner.value;
- let outerT = +outer.value;
- let stripN = +strip.value;
+ let innerT=+inner.value;
+ let outerT=+outer.value;
+ let stripN=+strip.value;
 
  // ✅ CORE GEOMETRY
  let coreOD = type===1
-   ? coreVal + 2*thk
-   : (coreVal + h + 2*thk) * Math.sqrt(angleVal/180);
+  ? coreVal + 2*thk
+  : (coreVal + h + 2*thk)*Math.sqrt(angleVal/180);
 
  // ✅ SINGLE
- let sw = d*d*0.7857*n*constants.AL;
+ let sw = dVal*dVal*0.7857*nVal*constants.AL;
+
  let scw = (coreOD*coreOD - coreVal*coreVal)*0.7857*constants.PVC;
 
  let innerOD = coreOD + 2*innerT;
  let siw = (innerOD*innerOD - coreOD*coreOD)*0.7857*constants.PVC;
 
- let saw = 0.8*4*0.7857*stripN*constants.STEEL;
+ // ✅ FIXED ARMOUR (CRITICAL)
+ let saw = 4*0.8*stripN*constants.STEEL*constants.COVERAGE;
 
  let outerOD = innerOD + 2*outerT;
  let sow = (outerOD*outerOD - innerOD*innerOD)*0.7857*constants.PVC;
 
  let stw = sw + scw + siw + saw + sow;
 
- // prices
- let sp = sw * rate;
- let scp = scw * constants.INS_RATE;
- let sip = siw * constants.INS_RATE;
- let sap = saw * constants.ARMOUR_RATE;
- let sop = sow * constants.INS_RATE;
+ // ✅ PRICES
+ let sp = sw*rateVal;
+ let scp = scw*constants.INS_RATE;
+ let sip = siw*constants.INS_RATE;
+ let sap = saw*constants.ARMOUR_RATE;
+ let sop = sow*constants.INS_RATE;
+
  let stp = sp + scp + sip + sap + sop;
 
  // ✅ MULTI
  let cores = 3;
- let packed = coreOD * Math.sqrt(cores) * 1.155;
+ let packed = coreOD*Math.sqrt(cores)*1.155;
 
- let mcw = (coreOD*coreOD - coreVal*coreVal)*0.7857*constants.PVC*cores;
+ let mcw = scw*cores;
 
  let minner = packed + 2*innerT;
  let miw = (minner*minner - packed*packed)*0.7857*constants.PVC;
 
- let maw = 0.8*4*(stripN*2)*constants.STEEL*0.7857;
+ let maw = 4*0.8*(stripN*2)*constants.STEEL*constants.COVERAGE;
 
  let mouter = minner + 2*outerT;
  let mow = (mouter*mouter - minner*minner)*0.7857*constants.PVC;
 
  let mtw = sw + mcw + miw + maw + mow;
 
- let mp = sw*rate;
- let mcp = mcw * constants.INS_RATE;
- let mip = miw * constants.INS_RATE;
- let map = maw * constants.ARMOUR_RATE;
- let mop = mow * constants.INS_RATE;
+ let mp = sw*rateVal;
+ let mcp = mcw*constants.INS_RATE;
+ let mip = miw*constants.INS_RATE;
+ let map = maw*constants.ARMOUR_RATE;
+ let mop = mow*constants.INS_RATE;
 
  let mtp = mp + mcp + mip + map + mop;
 
@@ -209,16 +205,17 @@ function upd(id,val){
  let el=document.getElementById(id);
  let v=val.toFixed(2);
 
- if(prev[id]!=v){ el.classList.add("highlight");
+ if(prev[id]!=v){
+  el.classList.add("highlight");
   setTimeout(()=>el.classList.remove("highlight"),600);
  }
+
  el.innerText=v;
  prev[id]=v;
 }
 
 function calculate(){
- let r = calc();
-
+ let r=calc();
  Object.keys(r).forEach(k=>{
   if(document.getElementById(k)){
     upd(k,r[k]);
@@ -229,8 +226,6 @@ function calculate(){
 // ================= INIT =================
 renderInput();
 renderConstants();
-
-document.addEventListener("input", calculate);
 
 </script>
 
